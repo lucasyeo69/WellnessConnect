@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Heart, Users, ArrowRight, Eye, EyeOff } from "lucide-react"
+import { auth, db } from "@/lib/firebase";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 interface LoginScreenProps {
   onLogin: (role: "student" | "mentor", email: string, password: string) => void
@@ -27,15 +30,40 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedRole) return
-    
-    setIsLoading(true)
-    // Simulate login delay
-    await new Promise(resolve => setTimeout(resolve, 800))
-    onLogin(selectedRole, email, password)
-    setIsLoading(false)
-  }
+    e.preventDefault();
+    if (!selectedRole) return;
+
+    setIsLoading(true);
+    try {
+      // 1. Sign in the user
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 2. Fetch their role from Firestore
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const actualRole = userData.role; // e.g., "mentor" or "mentee"
+
+        // 3. Verify if the actual role matches what they selected on the screen
+        if (actualRole.toLowerCase() === selectedRole.toLowerCase()) {
+          onLogin(selectedRole, email, password);
+        } else {
+          // 4. Role mismatch: Sign them out immediately and show an error
+          await signOut(auth);
+          alert(`Access Denied: You are registered as a ${actualRole}, not a ${selectedRole}.`);
+        }
+      } else {
+        await signOut(auth);
+        alert("User profile not found in database.");
+      }
+    } catch (error: any) {
+      alert(error.message || "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-wellness-teal-light/50 to-background flex flex-col items-center justify-center p-4">
@@ -75,9 +103,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
           <button
             onClick={() => handleRoleSelect("mentor")}
-            className="w-full p-4 bg-card rounded-xl border-2 border-border hover:border-wellness-warm transition-all flex items-center gap-4 text-left group"
+            className="w-full p-4 bg-card rounded-xl border-2 border-border hover:border-primary transition-all flex items-center gap-4 text-left group"
           >
-            <div className="w-14 h-14 rounded-full bg-wellness-warm/10 flex items-center justify-center group-hover:bg-wellness-warm/20 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-wellness-warm/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
               <Users className="w-7 h-7 text-wellness-warm" />
             </div>
             <div className="flex-1">
@@ -86,7 +114,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 Support students on their wellness journey
               </p>
             </div>
-            <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-wellness-warm transition-colors" />
+            <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
           </button>
 
           <p className="text-xs text-center text-muted-foreground mt-6">
