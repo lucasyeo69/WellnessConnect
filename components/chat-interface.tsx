@@ -60,8 +60,15 @@ export function ChatInterface({
     }
   }
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const formatTime = (date: Date | null | undefined) => {
+    if (!date) return ""; // Return empty string if date is missing
+    
+    // Ensure it's a real Date object before calling methods
+    try {
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch (e) {
+      return "";
+    }
   }
 
   const formatLastSeen = (date?: Date) => {

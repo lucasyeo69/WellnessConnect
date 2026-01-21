@@ -12,6 +12,12 @@ import { ProfileView } from "@/components/profile-view"
 import { LoginScreen } from "@/components/login-screen"
 import { FoodStore } from "@/components/food-store"
 import { MentorDashboard } from "@/components/mentor-dashboard"
+import { db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { query, orderBy, onSnapshot } from "firebase/firestore";
+import { useEffect } from "react"
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 // Food item type
 interface FoodItem {
@@ -348,6 +354,19 @@ const mockLesson = {
 }
 
 export default function MindBuddyApp() {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true);
+        // You can also fetch the user's role from Firestore here if needed
+      } else {
+        setIsLoggedIn(false);
+        setUserRole(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
   // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userRole, setUserRole] = useState<"student" | "mentor" | null>(null)
@@ -418,16 +437,19 @@ export default function MindBuddyApp() {
     )
   }
 
-  const handleSendMessage = (text: string) => {
-    const newMessage = {
-      id: `msg${Date.now()}`,
-      text,
-      sender: userRole === "mentor" ? ("mentor" as const) : ("user" as const),
-      timestamp: new Date(),
-      status: "sent" as const,
+  const handleSendMessage = async (text: string) => {
+    try {
+      // Add message to Firestore "messages" collection
+      await addDoc(collection(db, "messages"), {
+        text,
+        sender: userRole === "mentor" ? "mentor" : "user",
+        timestamp: serverTimestamp(), // Use Firebase's server time
+        status: "sent"
+      });
+    } catch (error) {
+      console.error("Error sending message: ", error);
     }
-    setMessages((prev) => [...prev, newMessage])
-  }
+  };
 
   const handleStartLesson = (moduleId: string, lessonId: string) => {
     setShowLesson(true)
