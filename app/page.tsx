@@ -25,6 +25,14 @@ interface FoodItem {
   color: string
 }
 
+interface Message {
+  id: string;
+  text: string;
+  sender: "mentor" | "user"; // Allows both roles
+  timestamp: Date;
+  status: "sent" | "delivered" | "read"; // Allows multiple statuses
+}
+
 // Mock data for student
 const mockStudent = {
   id: "s1",
@@ -352,7 +360,7 @@ export default function MindBuddyApp() {
   const [showFoodStore, setShowFoodStore] = useState(false)
   
   // Data state
-  const [messages, setMessages] = useState(mockMessages)
+  const [messages, setMessages] = useState<Message[]>([]);
   const [tasks, setTasks] = useState(mockTasks)
   const [isDarkMode, setIsDarkMode] = useState(false)
   
@@ -414,7 +422,7 @@ export default function MindBuddyApp() {
     const newMessage = {
       id: `msg${Date.now()}`,
       text,
-      sender: (userRole === "mentor" ? "mentor" : "user") as const,
+      sender: userRole === "mentor" ? ("mentor" as const) : ("user" as const),
       timestamp: new Date(),
       status: "sent" as const,
     }
@@ -485,25 +493,7 @@ export default function MindBuddyApp() {
       )
     }
 
-    // Mentor Call Screen
-    if (showCall) {
-      return (
-        <CallScreen
-          mentor={{
-            id: mockStudent.id,
-            name: mockStudent.name,
-            avatar: mockStudent.avatar,
-            specialty: [],
-            bio: "",
-            rating: 0,
-            sessionsCompleted: 0,
-            isOnline: true,
-          }}
-          onDecline={() => setShowCall(false)}
-          onEnd={() => setShowCall(false)}
-        />
-      )
-    }
+
 
     // Mentor Dashboard
     return (
